@@ -5,35 +5,42 @@
         <!--   HEAD     -->
       </div>
     </div>
-    <div style="flex: auto;width: 100%;overflow: hidden">
+    <div class="note-page">
       <div class="note-table" ref="noteTable">
         <div v-for="bar in state.barStack" class="bar-line">
-          <div class="note-item">
-            <div>
-              <div class="note-tab">
-                <span class="note-tab-text">T</span>
-                <span class="note-tab-text">A</span>
-                <span class="note-tab-text">B</span>
+          <div class="string-line">
+            <div class="note-item">
+              <div>
+                <div class="note-tab">
+                  <span class="note-tab-text">T</span>
+                  <span class="note-tab-text">A</span>
+                  <span class="note-tab-text">B</span>
+                </div>
+                <div class="note-string"></div>
+                <div class="note-string"></div>
+                <div class="note-string"></div>
+                <div class="note-string"></div>
+                <div class="note-string"></div>
+                <div class="note-string"></div>
               </div>
-              <div class="note-string"></div>
-              <div class="note-string"></div>
-              <div class="note-string"></div>
-              <div class="note-string"></div>
-              <div class="note-string"></div>
-              <div class="note-string"></div>
+            </div>
+            <div class="note-item" v-for="noteItem in bar">
+              <div class="note-string">{{ noteItem.string === 1 ? noteItem.fret : '' }}</div>
+              <div class="note-string">{{ noteItem.string === 2 ? noteItem.fret : '' }}</div>
+              <div class="note-string">{{ noteItem.string === 3 ? noteItem.fret : '' }}</div>
+              <div class="note-string">{{ noteItem.string === 4 ? noteItem.fret : '' }}</div>
+              <div class="note-string">{{ noteItem.string === 5 ? noteItem.fret : '' }}</div>
+              <div class="note-string">{{ noteItem.string === 6 ? noteItem.fret : '' }}</div>
             </div>
           </div>
-          <div class="note-item" v-for="noteItem in bar">
-            <div class="note-string">{{ noteItem.string === 1 ? noteItem.fret : '' }}</div>
-            <div class="note-string">{{ noteItem.string === 2 ? noteItem.fret : '' }}</div>
-            <div class="note-string">{{ noteItem.string === 3 ? noteItem.fret : '' }}</div>
-            <div class="note-string">{{ noteItem.string === 4 ? noteItem.fret : '' }}</div>
-            <div class="note-string">{{ noteItem.string === 5 ? noteItem.fret : '' }}</div>
-            <div class="note-string">{{ noteItem.string === 6 ? noteItem.fret : '' }}</div>
-            <div class="number-box">
-              <div class="number-dot" :class="noteItem.topDot?'number-dot-show':''"></div>
-              <div :class="noteItem.half?'number-half':''"><span>{{ noteItem.number }}</span></div>
-              <div class="number-dot" :class="noteItem.bottomDot?'number-dot-show':''"></div>
+          <div class="number-line">
+            <div class="note-item"></div>
+            <div class="note-item" v-for="noteItem in bar">
+              <div class="number-box">
+                <div class="number-dot" :class="noteItem.topDot?'number-dot-show':''"></div>
+                <div :class="noteItem.half?'number-half':''"><span>{{ noteItem.number }}</span></div>
+                <div class="number-dot" :class="noteItem.bottomDot?'number-dot-show':''"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -207,14 +214,32 @@ onMounted(() => {
 </script>
 
 <style lang="less" scoped>
-.note-table {
+.note-page {
+  flex: auto;
   width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.note-table {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .bar-line {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.string-line {
+  width: 100%;
+  display: flex;
+}
+
+.number-line {
   width: 100%;
   display: flex;
 }
@@ -290,4 +315,3 @@ onMounted(() => {
   float: left;
 }
 </style>
-6

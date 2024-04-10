@@ -1,6 +1,6 @@
 <template>
   <div>
-    <a href="/guitar">G</a>
+    <a href="/#/guitar">G</a>
   </div>
 </template>
 
