@@ -11,6 +11,11 @@ const routes = [
         path: '/guitar',
         name: 'guitar',
         component: () => import('@/page/guitar')
+    },
+    {
+        path: '/sound',
+        name: 'sound',
+        component: () => import('@/page/sound')
     }
 ];
 const router = createRouter({
