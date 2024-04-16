@@ -1,31 +1,27 @@
 <template>
-  <div style="padding: 10px">
-    <div class="line">
-      <audio controls>
-        <source :src="state.audioSrc" type="audio/wav"/>
-      </audio>
-    </div>
-    <div class="line">
-      <button @click="play">play</button>
+  <div style="width: 100%;height: 100%;display: flex;flex-direction: column;">
+    <div class="active-note"></div>
+    <div class="note-bord">
+      <div class="note-button" v-for="(note,index) in soundConfig.noteMap" @click="makeMusic(index)">{{note.k}}</div>
     </div>
   </div>
 </template>
 
 <script setup>
 import {onMounted, reactive, ref} from "vue";
-
-const audioRef = ref();
+import soundConfig from "@/page/sound/sound.config";
+import {Howl} from 'howler'
 
 const state = reactive({
-  audioSrc: undefined
+
 })
 
 const getIntArr = (bits, num, size) => {
-  let max = 2 << bits - 1;
+  let max = 1 << bits;
   let result = [];
   while (result.length < size) {
     if (num > 0) {
-      let item = num % max;
+      let item = Math.floor(num % max);
       result.push(item);
       num = Math.floor((num - item) / max);
     } else {
@@ -40,7 +36,6 @@ const getRiffChunk = ({otherSize}) => {
   const riff = ['RIFF'];
   //剩余内容字节数 4B
   let afterLengthBlock = getIntArr(8, otherSize + 4, 4);
-  console.log(afterLengthBlock)
   //WAVE 标志 4B
   const wave = ['WAVE'];
   let result = [riff, afterLengthBlock, wave]
@@ -98,46 +93,46 @@ const transferToCharArr = (dataArr) => {
   return result;
 }
 
-//[261.6, 293.6, 329.6, 349.2, 392, 440, 493.8]
-const getPMCData = ({channels, sampleRate, bitsPerSample}) => {
-  const demoRate = 261.6;
-  let maxEnergy = 2 << bitsPerSample - 1;
-  let second = 2;
+const getPMCData = ({channels, sampleRate, bitsPerSample, noteIndex}) => {
+  let maxEnergy = (1 << bitsPerSample - 1);
+  let second = 0.41;
   let maxCursor = second * sampleRate;
-
   const attackTime = 0.01;
   const releaseTime = 0.2;
-
-  const f = (maxY, maxX, rate, x) => {
-    const note = Math.sin(2 * Math.PI * rate * x / maxX);
-    let t = 0;
-    if (x < maxX * attackTime) {
-      t = 1 / (maxX * attackTime);
-    } else if (x < maxX * (releaseTime + attackTime)) {
-      t = 1 - 0.2 * (maxX * releaseTime);
-    } else if (x < maxX * (releaseTime + attackTime + attackTime)) {
-      t = 0.8 - 0.8 * (maxX * releaseTime);
+  let t = 1;
+  let x1 = maxCursor * attackTime;
+  let x2 = maxCursor * (attackTime + releaseTime);
+  let x3 = maxCursor * (attackTime + releaseTime + releaseTime);
+  const fp = (x) => {
+    if (x < 0) return 0;
+    if (x < x1) {
+      t = x / x1;
+    } else if (x < x2) {
+      t = 0.8 + 0.2 * (x2 - x) / (x2 - x1);
+    } else if (x < x3) {
+      t = 0.8 * (x3 - x) / (x3 - x2);
     }
-    const y = note * t;
+    return t;
+  }
+  const fx = (x, f0) => {
+    const note = Math.sin(2 * Math.PI * f0 / sampleRate * x);
+    const t = fp(x);
+    const y = Math.floor(note * t * maxEnergy);
     return y;
   }
 
-  let cursor = 0;
   let result = [];
+  const f0 = soundConfig.noteMap[noteIndex].f;
+  let cursor = 0;
   while (cursor < maxCursor) {
-    const y = f(maxEnergy, maxCursor, demoRate, cursor);
+    const y = fx(cursor, f0);
     const data = getIntArr(8, y, bitsPerSample / 8)
-    result.push(...data.reverse());
+    result.push(...data);
     cursor++;
   }
-
-  //测试
-  /*let blob = new Blob([new Uint8Array(result)], {type: "application/octet-binary"});//把二进制的码转化为blob类型
-  let url = URL.createObjectURL(blob);
-  window.open(url)*/
-
   return result;
 }
+
 
 const getWavDataUrl = (config) => {
   const fmtChunk = getFmtChunk(config);
@@ -145,8 +140,7 @@ const getWavDataUrl = (config) => {
   const dataChunk = getDataChunk(pcmData);
   const otherSize = fmtChunk.length + dataChunk.length;
   const riffChunk = getRiffChunk({otherSize});
-  const waveData = new Uint8Array([...riffChunk, ...fmtChunk, ...dataChunk]);
-  console.log(`waveData:${waveData}`);
+  const waveData = [...riffChunk, ...fmtChunk, ...dataChunk];
   let result = '';
   let cursor = 0;
   const chunkSize = 8 * 1024;
@@ -160,25 +154,39 @@ const getWavDataUrl = (config) => {
   return base64DataUrl
 }
 
-const play = () => {
+const makeMusic = (noteIndex) => {
   const config = {
     channels: 1,
     sampleRate: 44100,
-    bitsPerSample: 16
+    bitsPerSample: 16,
+    noteIndex: noteIndex
   }
-  state.audioSrc = getWavDataUrl(config);
+  const soundSrc = getWavDataUrl(config);
+  let sound = new Howl({
+    src: soundSrc,
+    volume: 1.0
+  });
+  sound.play();
 }
 
 onMounted(() => {
-  play();
+
 })
 
 </script>
 
-<style scoped>
-.line {
-  height: 50px;
+<style lang="less" scoped>
+.note-bord{
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
 }
-
+.note-button{
+  width: 80px;
+  height: 50px;
+  line-height: 50px;
+  font-size: 30px;
+  font-weight: bold;
+}
 </style>

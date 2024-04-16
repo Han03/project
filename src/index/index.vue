@@ -1,6 +1,8 @@
 <template>
   <div>
-    <a href="/#/guitar">G</a>
+    <a href="/public#/guitar">G</a>
+    <a href="/public#/sound">S</a>
+    <a href="/public#/mic">M</a>
   </div>
 </template>
 

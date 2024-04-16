@@ -5,7 +5,7 @@ const routes = [
     {
         path: '/',
         name: 'index',
-        component: () => import('@/page/index')
+        component: () => import('@/index')
     },
     {
         path: '/guitar',
@@ -16,6 +16,11 @@ const routes = [
         path: '/sound',
         name: 'sound',
         component: () => import('@/page/sound')
+    },
+    {
+        path: '/mic',
+        name: 'mic',
+        component: () => import('@/page/mic')
     }
 ];
 const router = createRouter({
