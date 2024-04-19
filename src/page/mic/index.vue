@@ -4,13 +4,17 @@
       <canvas style="width: 400px;height: 200px" ref="canvasRef"></canvas>
     </div>
     <div class="note-line">
-      <span>已识别强音音标:</span>
-      <span v-for="(data,noteKey) in state.highFrequencyNoteMap">{{ noteKey }}</span>
+      <span>历史高强度音:</span>
+      <span v-for="noteKey in state.strongNoteHistory">{{ noteKey }}、</span>
     </div>
     <div class="note-line">
-      <span>持续音标（>=0.1s）:</span>
+      <span>已识别音:</span>
+      <span v-for="(data,noteKey) in state.highFrequencyNoteMap">{{ noteKey }}、</span>
+    </div>
+    <div class="note-line">
+      <span>持续音（>=0.1s）:</span>
       <span v-for="(data,noteKey) in state.highFrequencyNoteMap">
-        <template v-if="data.continueTime>=100">{{ noteKey }}、</template>
+        <template v-if="data.continueTime >= 100">{{ noteKey }}、</template>
       </span>
     </div>
     <div>
@@ -26,7 +30,8 @@ import {noteMap} from "@/page/sound/sound.config";
 
 const state = reactive({
   animationEnable: true,
-  highFrequencyNoteMap: {}
+  highFrequencyNoteMap: {},
+  strongNoteHistory: []
 })
 
 
@@ -57,7 +62,6 @@ const testMic = () => {
       function draw() {
         let dataArray = new Uint8Array(recorder.analyser.frequencyBinCount);
         recorder.analyser.getByteFrequencyData(dataArray)
-        //let dataArray = recorder.getRecordAnalyseData();
         const WIDTH = canvasRef.value.width
         const HEIGHT = canvasRef.value.height;
         requestAnimationFrame(draw);
@@ -77,18 +81,22 @@ const testMic = () => {
         let x = 0;
         let maxData = 0;
         let bigIndex = [];
+        const nowTime = new Date().getTime();
         for (let i = 0; i < dataArray.length; i++) {
           const visualData = dataArray[i];
           const frequency = (i + 1) * 20000 / 1024;
           const noteKey = getNoteKeyByFrequency(frequency);
-          if (visualData > 200 || (visualData > 128 && state.highFrequencyNoteMap[noteKey] !== undefined)) {
+          const recordNote = state.highFrequencyNoteMap[noteKey];
+          if (visualData > 128
+              || (visualData > 64 && recordNote !== undefined)
+              || (visualData > 10 && recordNote !== undefined && nowTime - recordNote.beginTime < 1000)) {
             bigIndex.push(i);
           }
           if (visualData > maxData) {
             maxData = visualData;
           }
-          let v = visualData / 256;
-          let y = HEIGHT - v * HEIGHT;
+          let strong = visualData / 256;
+          let y = HEIGHT - strong * HEIGHT;
           canvasCtx.moveTo(x, HEIGHT);
           canvasCtx.lineTo(x, y);
           x += sliceWidth;
@@ -98,10 +106,11 @@ const testMic = () => {
         //强频率
         canvasCtx.strokeStyle = 'rgb(22,141,255)';
         let highFrequencyNoteMap = {};
-        const nowTime = new Date().getTime();
+        let strongNoteHistory = [];
         for (let j = 0; j < bigIndex.length; j++) {
           const index = bigIndex[j];
-          const y = HEIGHT - HEIGHT * dataArray[index] / 256;
+          const strong = dataArray[index] / 256;
+          const y = HEIGHT - HEIGHT * strong;
           canvasCtx.moveTo(sliceWidth * index, HEIGHT);
           canvasCtx.lineTo(sliceWidth * index, y);
           //处理强频率
@@ -110,9 +119,16 @@ const testMic = () => {
           if (noteKey !== undefined && highFrequencyNoteMap[noteKey] === undefined) {
             highFrequencyNoteMap[noteKey] = {
               beginTime: nowTime,
+              maxStrong: strong,
               continueTime: 0
             }
+            if (strong > 0.9) {
+              strongNoteHistory.push(noteKey);
+            }
           }
+        }
+        if (strongNoteHistory.length > 0) {
+          state.strongNoteHistory = strongNoteHistory;
         }
         canvasCtx.stroke();
         //合并上一帧识别结果
@@ -121,6 +137,7 @@ const testMic = () => {
           let newData = highFrequencyNoteMap[noteKey];
           if (oldData !== undefined) {
             newData.beginTime = oldData.beginTime;
+            newData.maxStrong = oldData.maxStrong;
             newData.continueTime = nowTime - oldData.beginTime;
           }
         }
@@ -134,9 +151,11 @@ const testMic = () => {
 
 const getNoteKeyByFrequency = (f) => {
   let key = undefined;
-  for (let i = 0; i < noteMap.length; i++) {
-    if (Math.abs(noteMap[i].f - f) < noteMap[i].f / 20) {
-      key = noteMap[i].k;
+  for (let i = 0; i < noteMap.length - 1; i++) {
+    const f1 = f - noteMap[i].f;
+    const f2 = f - noteMap[i + 1].f;
+    if (f1 >= 0 && f2 <= 0) {
+      key = f1 + f2 < 0 ? noteMap[i].k : noteMap[i + 1].k;
       break;
     }
   }
