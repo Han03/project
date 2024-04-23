@@ -1,2 +1,2 @@
 "use strict";(self["webpackChunkgutar"]=self["webpackChunkgutar"]||[]).push([[699],{9699:function(n,r,e){e.r(r),e.d(r,{default:function(){return d}});var u=e(6768);const t=(0,u.Lk)("a",{href:"#/guitar"},"G",-1),a=(0,u.Lk)("a",{href:"#/sound"},"S",-1),c=(0,u.Lk)("a",{href:"#/mic"},"M",-1),f=[t,a,c];function s(n,r,e,t,a,c){return(0,u.uX)(),(0,u.CE)("div",null,f)}var o={name:"Index",components:{}},i=e(1241);const k=(0,i.A)(o,[["render",s]]);var d=k}}]);
-//# sourceMappingURL=699.1b9edc04.js.map
+//# sourceMappingURL=699.65f8595c.js.map
