@@ -10,7 +10,7 @@
         <div v-for="(bar,barIndex) in state.barStack" class="bar-line">
           <div class="chord-line">
             <div class="note-item"></div>
-            <div class="note-item" v-for="noteItem in bar" :key="getNoteItemKey()">
+            <div class="note-item" v-for="noteItem in bar" :key="getNoteItemKey('noteChord')">
               <div class="chord-box"
                    v-if="noteItem.beginChord">
                 <chord :name="noteItem.chordName"></chord>
@@ -32,27 +32,23 @@
                       <span class="note-tab-text">A</span>
                       <span class="note-tab-text">B</span>
                     </div>
-                    <div class="note-string"></div>
-                    <div class="note-string"></div>
-                    <div class="note-string"></div>
-                    <div class="note-string"></div>
-                    <div class="note-string"></div>
-                    <div class="note-string"></div>
+                    <div class="note-string" v-for="i in 6"></div>
                   </div>
                 </div>
-                <div class="note-item" v-for="(noteItem,noteIndex) in bar">
+                <div class="note-item" v-for="(noteItem,noteIndex) in bar" :key="getNoteItemKey('noteItem')">
                   <div>
                     <div v-if="noteIndex===bar.length-1" class="note-tab-end">
                       <span class="note-tab-text">&nbsp;</span>
                       <span class="note-tab-text">&nbsp;</span>
                       <span class="note-tab-text">&nbsp;</span>
                     </div>
-                    <div class="note-string">{{ noteItem.string === 1 ? noteItem.fret : '' }}</div>
-                    <div class="note-string">{{ noteItem.string === 2 ? noteItem.fret : '' }}</div>
-                    <div class="note-string">{{ noteItem.string === 3 ? noteItem.fret : '' }}</div>
-                    <div class="note-string">{{ noteItem.string === 4 ? noteItem.fret : '' }}</div>
-                    <div class="note-string">{{ noteItem.string === 5 ? noteItem.fret : '' }}</div>
-                    <div class="note-string">{{ noteItem.string === 6 ? noteItem.fret : '' }}</div>
+                    <div class="note-string" v-for="i in 6" :key="getNoteItemKey('noteString')">
+                      <TapNumber v-if="noteItem.string === i"
+                                 :duration="60000/state.speed"
+                                 :value="noteItem.fret"
+                                 :ref="el => addTapNumberRef(barIndex,noteIndex,el)"
+                      ></TapNumber>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -84,14 +80,24 @@
 import chordConfig from "@/page/guitar/chord.config";
 import {onMounted, reactive, ref} from "vue";
 import Chord from "@/page/guitar/chord.vue";
+import TapNumber from "@/page/guitar/tap-number";
 
 const noteTable = ref();
+
+const tapNumberRef = {};
+
+const addTapNumberRef = (barIndex, noteIndex, el) => {
+  if (tapNumberRef[barIndex] === undefined) {
+    tapNumberRef[barIndex] = {};
+  }
+  tapNumberRef[barIndex][noteIndex] = el;
+}
 
 const state = reactive({
   activeNote: [0, 0],
   interval: undefined,
   //每帧时间
-  interValTime: 10,
+  intervalTime: 10,
   //运行时间
   intervalRunTime: 0,
   //速度
@@ -111,9 +117,10 @@ const state = reactive({
 })
 
 let keyIndex = 0;
-const getNoteItemKey = () => {
+const getNoteItemKey = (type) => {
   keyIndex++;
-  return `NoteItem_${keyIndex}`
+  if(type===undefined) type = 'NoteItem';
+  return `${type}_${keyIndex}`
 }
 
 const pushBar = (pushSize) => {
@@ -240,7 +247,7 @@ const noteIntervalEvent = () => {
     pushBar(state.barLength - state.barStack.length);
   } else {
     const barTime = 60000 / state.speed * state.barBeat;
-    if (state.intervalRunTime % barTime < state.interValTime) {
+    if (state.intervalRunTime % barTime < state.intervalTime) {
       pushBar(1);
     }
   }
@@ -255,6 +262,22 @@ const animationIntervalEvent = () => {
   }
 }
 
+let runningNoteIndex = -1;
+const runningNoteEvent = () => {
+  const barIndex = 1;
+  const minBeatTime = 60000 / state.speed / state.beatNote * state.minBeatNote;
+  const noteIndex = Math.floor(state.intervalRunTime / minBeatTime);
+  if (noteIndex !== runningNoteIndex) {
+    runningNoteIndex = noteIndex;
+    const note = state.barStack[barIndex][noteIndex];
+    console.log(`[${barIndex},${runningNoteIndex}] -> {fret:${note !== undefined?note.fret:'undefined'}`)
+    if (note !== undefined && note.fret > -1) {
+      const ref = tapNumberRef[barIndex][runningNoteIndex];
+      if(ref) ref.togglePause();
+    }
+  }
+}
+
 const startInterval = () => {
   if (state.interval !== undefined) {
     clearInterval(state.interval);
@@ -265,8 +288,9 @@ const startInterval = () => {
   state.interval = setInterval(() => {
     noteIntervalEvent();
     animationIntervalEvent();
-    state.intervalRunTime += state.interValTime;
-  }, state.interValTime)
+    runningNoteEvent();
+    state.intervalRunTime += state.intervalTime;
+  }, state.intervalTime)
 }
 
 onMounted(() => {

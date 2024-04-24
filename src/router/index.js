@@ -21,6 +21,11 @@ const routes = [
         path: '/mic',
         name: 'mic',
         component: () => import('@/page/mic')
+    },
+    {
+        path: '/test',
+        name: 'test',
+        component: () => import('@/page/test')
     }
 ];
 const router = createRouter({
