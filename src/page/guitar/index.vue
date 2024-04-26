@@ -1,76 +1,28 @@
 <template>
-  <div style="display: flex;flex-direction: column;height: 100%">
-    <div style="width: 100%;">
-      <div style="background-color: white;height: 10vh;width: 100%;">
-        <!--   HEAD     -->
+  <div style="width: 100%;height: 100%;">
+    <div style="display: flex;flex-direction: column;height: 100%;">
+      <div style="width: 100%;">
+        <div style="background-color: white;height: 10vh;width: 100%;">
+          <!--   HEAD     -->
+        </div>
       </div>
-    </div>
-    <div class="note-page">
-      <div class="note-table" ref="noteTable" @click="startInterval">
-        <div v-for="(bar,barIndex) in state.barStack" class="bar-line">
-          <div class="chord-line">
-            <div class="note-item"></div>
-            <div class="note-item" v-for="noteItem in bar" :key="getNoteItemKey('noteChord')">
-              <div class="chord-box"
-                   v-if="noteItem.beginChord">
-                <chord :name="noteItem.chordName"></chord>
-              </div>
-            </div>
+      <div class="note-page">
+        <div class="note-table" ref="noteTable" @click="toggleInterval"
+             :class="state.orderRevert?'bar-order-revert':''">
+          <div class="bar-group">
+            <Bar v-for="(barItem,barIndex) in state.barStack0" :item="barItem" :speed="state.speed"
+                 :ref="el=>setBarRef0(barIndex,el)"></Bar>
           </div>
-          <div class="bar-content">
-            <div class="bar-start">
-              <div class="bar-start-top"></div>
-              <div class="bar-start-center"></div>
-              <div class="bar-start-bottom"></div>
-            </div>
-            <div>
-              <div class="string-line">
-                <div class="note-item">
-                  <div>
-                    <div class="note-tab">
-                      <span class="note-tab-text">T</span>
-                      <span class="note-tab-text">A</span>
-                      <span class="note-tab-text">B</span>
-                    </div>
-                    <div class="note-string" v-for="i in 6"></div>
-                  </div>
-                </div>
-                <div class="note-item" v-for="(noteItem,noteIndex) in bar" :key="getNoteItemKey('noteItem')">
-                  <div>
-                    <div v-if="noteIndex===bar.length-1" class="note-tab-end">
-                      <span class="note-tab-text">&nbsp;</span>
-                      <span class="note-tab-text">&nbsp;</span>
-                      <span class="note-tab-text">&nbsp;</span>
-                    </div>
-                    <div class="note-string" v-for="i in 6" :key="getNoteItemKey('noteString')">
-                      <TapNumber v-if="noteItem.string === i"
-                                 :duration="60000/state.speed"
-                                 :value="noteItem.fret"
-                                 :ref="el => addTapNumberRef(barIndex,noteIndex,el)"
-                      ></TapNumber>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="number-line">
-                <div class="note-item"></div>
-                <div class="note-item" v-for="noteItem in bar">
-                  <div class="number-box">
-                    <div class="number-dot" :class="noteItem.topDot?'number-dot-show':''"></div>
-                    <div class="number-half" :class="noteItem.half?'number-half-show':''"><span
-                        class="note-number">{{ noteItem.number }}</span></div>
-                    <div class="number-dot" :class="noteItem.bottomDot?'number-dot-show':''"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div class="bar-group">
+            <Bar v-for="(barItem,barIndex) in state.barStack1" :item="barItem" :speed="state.speed"
+                 :ref="el=>setBarRef1(barIndex,el)"></Bar>
           </div>
         </div>
       </div>
-    </div>
-    <div style="width: 100%">
-      <div style="background-color: white;height: 10vh;width: 100%">
-        <!--   FOOT     -->
+      <div style="width: 100%">
+        <div style="background-color: white;height: 10vh;width: 100%">
+          <!--   FOOT     -->
+        </div>
       </div>
     </div>
   </div>
@@ -78,28 +30,13 @@
 
 <script setup>
 import chordConfig from "@/page/guitar/chord.config";
-import {onMounted, reactive, ref} from "vue";
-import Chord from "@/page/guitar/chord.vue";
-import TapNumber from "@/page/guitar/tap-number";
+import {onMounted, reactive, ref, nextTick} from "vue";
+import Bar from '@/page/guitar/bar';
 
 const noteTable = ref();
 
-const tapNumberRef = {};
-
-const addTapNumberRef = (barIndex, noteIndex, el) => {
-  if (tapNumberRef[barIndex] === undefined) {
-    tapNumberRef[barIndex] = {};
-  }
-  tapNumberRef[barIndex][noteIndex] = el;
-}
-
 const state = reactive({
-  activeNote: [0, 0],
-  interval: undefined,
-  //每帧时间
-  intervalTime: 10,
-  //运行时间
-  intervalRunTime: 0,
+  ready: false,
   //速度
   speed: 60,
   //每小节4拍
@@ -112,19 +49,47 @@ const state = reactive({
   noteRate: [2, 2, 6, 3],
   //最大品位
   maxFret: 3,
-  barStack: [],
-  barLength: 10
-})
+  //第一谱子
+  barStack0: [],
+  //第二谱子
+  barStack1: [],
+  //排序是否反置
+  orderRevert: false
+});
+
+const data = {
+  //运行时间
+  intervalRunTime: 0,
+  //interval
+  interval: undefined,
+  //stack的长度
+  barLength: 2,
+  //每帧时间
+  intervalTime: 10,
+  //第一小节组
+  barRef0: {},
+  //第二小节组
+  barRef1: {}
+}
+
+const setBarRef0 = (index, ref) => {
+  data.barRef0[index] = ref;
+}
+
+const setBarRef1 = (index, ref) => {
+  data.barRef1[index] = ref;
+}
 
 let keyIndex = 0;
 const getNoteItemKey = (type) => {
   keyIndex++;
-  if(type===undefined) type = 'NoteItem';
+  if (type === undefined) type = 'NoteItem';
   return `${type}_${keyIndex}`
 }
 
-const pushBar = (pushSize) => {
-  for (let i = 0; i < pushSize; i++) {
+const pushStack = () => {
+  let newStack = [];
+  for (let i = 0; i < data.barLength; i++) {
     let beatNoteStack = [];
     //小节剩余的拍子
     let leftNote = state.barBeat * state.beatNote;
@@ -163,31 +128,40 @@ const pushBar = (pushSize) => {
     //获取随机弹奏位置
     let randomFretStringArr = getRandomFretString(fretStringSize);
     //该小节
-    let barItem = [];
+    const key = getNoteItemKey('barKey');
+    let barItem = {
+      _key: key,
+      noteList: []
+    };
     let randomFretStringIndex = 0;
     for (let i = 0; i < beatNoteStack.length; i++) {
       let note = beatNoteStack[i];
+      const key = getNoteItemKey('noteItem');
       if (note > 0) {
         let fretString = randomFretStringArr[randomFretStringIndex];
         let pitchName = chordConfig.pitchNames[fretString.string - 1][fretString.fret];
-        barItem.push({
+        barItem.noteList.push({
+          _key: key,
           note: note,
           ...fretString,
           ...pitchName
         })
         randomFretStringIndex++;
       } else {
-        barItem.push({
-          note: note
+        barItem.noteList.push({
+          _key: key,
+          note: note,
         });
       }
     }
-    //移除头部小节
-    if (state.barStack.length >= state.barLength) {
-      state.barStack.splice(0, 1);
-    }
-    //追加新小节
-    state.barStack.push(barItem);
+    newStack.push(barItem);
+  }
+
+  if (tickInfo.stackIndex === 1) {
+    state.barStack0 = newStack;
+  }
+  if (tickInfo.stackIndex === 0) {
+    state.barStack1 = newStack;
   }
 }
 const getRandomFretString = (size) => {
@@ -242,59 +216,120 @@ const getRandomNote = () => {
   return note;
 }
 
-const noteIntervalEvent = () => {
-  if (state.barStack.length < state.barLength) {
-    pushBar(state.barLength - state.barStack.length);
+const noteTickEvent = () => {
+  if (!state.ready || tickInfo.tickOfStack === tickInfo.barTickSize) {
+    pushStack();
+  }
+}
+
+const animationTickEvent = () => {
+  //等待一小节
+  if (tickInfo.tickIndex < tickInfo.barTickSize) return;
+  const fistBarGroup = noteTable.value.children[0];
+  const secondBarGroup = noteTable.value.children[1];
+  const animationIndex = tickInfo.tickOfStack >= tickInfo.barTickSize
+      ? tickInfo.tickOfStack - tickInfo.barTickSize : (data.barLength - 1) * tickInfo.barTickSize + tickInfo.tickOfStack;
+  const animationTotalSize = tickInfo.stackTickSize;
+  const orderRevert = tickInfo.stackIndex === 0 && tickInfo.barOfStack === 0
+      || tickInfo.stackIndex === 1 && tickInfo.barOfStack > 0;
+  if (state.orderRevert !== orderRevert) state.orderRevert = orderRevert;
+
+  if (!orderRevert) {
+    let marginSize = -fistBarGroup.clientHeight * animationIndex / animationTotalSize;
+    fistBarGroup.style = `margin-top:${marginSize}px`;
   } else {
-    const barTime = 60000 / state.speed * state.barBeat;
-    if (state.intervalRunTime % barTime < state.intervalTime) {
-      pushBar(1);
-    }
+    let beginSize = fistBarGroup.clientHeight + secondBarGroup.clientHeight - noteTable.value.clientHeight;
+    let marginSize = secondBarGroup.clientHeight * animationIndex / animationTotalSize - beginSize;
+    fistBarGroup.style = `margin-bottom:${marginSize}px`;
   }
 }
 
-const animationIntervalEvent = () => {
-  const barTime = 60000 / state.speed * state.barBeat;
-  if (noteTable.value.children[0]) {
-    let barHeight = noteTable.value.children[0].clientHeight;
-    let marginTop = state.intervalRunTime % barTime / barTime * barHeight;
-    noteTable.value.style = `margin-top:${-marginTop}px`;
+const runningNoteTickEvent = () => {
+  if (tickInfo.tickOfMinNote === 1) {
+    const noteRef = tickInfo.stackIndex === 0
+        ? data.barRef0[tickInfo.barOfStack]?.getTapNumber(tickInfo.minNoteOfBar)
+        : data.barRef1[tickInfo.barOfStack]?.getTapNumber(tickInfo.minNoteOfBar);
+    if (noteRef && !noteRef.isRunning()) noteRef.run();
   }
 }
 
-let runningNoteIndex = -1;
-const runningNoteEvent = () => {
-  const barIndex = 1;
-  const minBeatTime = 60000 / state.speed / state.beatNote * state.minBeatNote;
-  const noteIndex = Math.floor(state.intervalRunTime / minBeatTime);
-  if (noteIndex !== runningNoteIndex) {
-    runningNoteIndex = noteIndex;
-    const note = state.barStack[barIndex][noteIndex];
-    console.log(`[${barIndex},${runningNoteIndex}] -> {fret:${note !== undefined?note.fret:'undefined'}`)
-    if (note !== undefined && note.fret > -1) {
-      const ref = tapNumberRef[barIndex][runningNoteIndex];
-      if(ref) ref.togglePause();
-    }
+//节拍点信息
+const tickInfo = {
+  ready: false,
+  //tick序号
+  tickIndex: -1,
+  //minNote的tick序号
+  tickOfMinNote: -1,
+  //bar的tick序号
+  tickOfBar: -1,
+  //stack的tick序号
+  tickOfStack: -1,
+  //最小音符持续一次的tick次数
+  minNoteTickSize: -1,
+  //小节持续一次的tick次数
+  barTickSize: -1,
+  //一次stack的tick次数
+  stackTickSize: -1,
+  //小节的最小音符数
+  barMinNoteSize: -1,
+  //bar索引
+  barOfStack: -1,
+  //minNote索引
+  minNoteOfBar: -1,
+  //弹奏中的谱子
+  stackIndex: 1,
+}
+const recordTickInfo = () => {
+  tickInfo.tickIndex += 1;
+  if (!tickInfo.ready) {
+    const minNoteTime = 60000 / state.speed / state.beatNote * state.minBeatNote;
+    tickInfo.minNoteTickSize = minNoteTime / data.intervalTime;
+    tickInfo.barTickSize = tickInfo.minNoteTickSize * state.barBeat * state.beatNote / state.minBeatNote;
+    tickInfo.barMinNoteSize = tickInfo.barTickSize / tickInfo.minNoteTickSize;
+    tickInfo.stackTickSize = tickInfo.barTickSize * data.barLength;
+    tickInfo.ready = true;
+  }
+  tickInfo.tickOfMinNote = tickInfo.tickIndex % tickInfo.minNoteTickSize;
+  tickInfo.tickOfBar = tickInfo.tickIndex % tickInfo.barTickSize;
+  tickInfo.tickOfStack = tickInfo.tickIndex % tickInfo.stackTickSize;
+  if (tickInfo.tickOfStack === 0) {
+    tickInfo.barOfStack = 0;
+    tickInfo.stackIndex = 1 - tickInfo.stackIndex;
+  } else if (tickInfo.tickOfBar === 0) {
+    tickInfo.barOfStack += 1;
+  }
+  if (tickInfo.tickOfBar === 0) {
+    tickInfo.minNoteOfBar = 0;
+  } else if (tickInfo.tickOfMinNote === 0) {
+    tickInfo.minNoteOfBar += 1;
   }
 }
 
-const startInterval = () => {
-  if (state.interval !== undefined) {
-    clearInterval(state.interval);
-    state.interval = undefined;
+const toggleInterval = () => {
+  if (data.interval !== undefined) {
+    clearInterval(data.interval);
+    data.interval = undefined;
     return;
   }
 
-  state.interval = setInterval(() => {
-    noteIntervalEvent();
-    animationIntervalEvent();
-    runningNoteEvent();
-    state.intervalRunTime += state.intervalTime;
-  }, state.intervalTime)
+  data.interval = setInterval(() => {
+    tickEvent();
+    data.intervalRunTime += data.intervalTime;
+  }, data.intervalTime)
+}
+
+const tickEvent = () => {
+  recordTickInfo();
+  noteTickEvent();
+  animationTickEvent();
+  runningNoteTickEvent();
 }
 
 onMounted(() => {
-  pushBar(state.barLength - state.barStack.length - 1);
+  //开始时调用一次tick初始化数据
+  pushStack();
+  tickEvent();
+  state.ready = true;
 })
 
 </script>
@@ -310,177 +345,18 @@ onMounted(() => {
 
 .note-table {
   height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.bar-content {
-  display: flex;
-}
-
-.bar-line {
-  width: 100%;
-  display: flex;
-  padding-top: 10px;
-  padding-bottom: 20px;
-  flex-direction: column;
-}
-
-.chord-line {
-  display: flex;
-}
-
-.string-line {
-  width: 100%;
-  display: flex;
-}
-
-.number-line {
-  width: 100%;
-  display: flex;
-  border-left: 2px solid black;
-  padding-top: 20px;
-  margin-bottom: 10px;
-}
-
-.note-item {
-  width: 40px;
-  text-align: center;
-
-  .note-string {
-    display: block;
-    width: 100%;
-    margin-top: 10px;
-    height: 2px;
-    background-color: black;
-    line-height: 0px;
-  }
-
-  .note-number {
-    font-weight: lighter;
-    margin-left: -5px;
-  }
-}
-
-.number-top-dot:before {
-  width: 4px;
-  height: 4px;
-  border-radius: 4px;
-  background-color: black;
-}
-
-.number-bottom-dot:after {
-  width: 4px;
-  height: 4px;
-  border-radius: 4px;
-  background-color: black;
-}
-
-.number-box {
   width: 100%;
   display: flex;
   flex-direction: column;
-  text-align: center;
-  height: 30px;
 }
 
-.number-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 3px;
-  background-color: transparent;
-  margin: 0 auto;
+.bar-order-revert {
+  flex-direction: column-reverse;
 }
 
-.number-dot-show {
-  background-color: #464646;
+.bar-group {
+  width: 100%;
+  flex-shrink: 0;
 }
 
-.note-tab {
-  height: 100%;
-  border-left: 2px solid black;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  float: left;
-}
-
-.note-tab-end {
-  height: 100%;
-  border-right: 2px solid black;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  float: right;
-}
-
-.note-tab-text {
-  font-size: 20px;
-  line-height: 20px;
-  display: inline-block;
-}
-
-.number-half:before {
-  content: '#';
-  width: 0;
-  margin-left: 5px;
-  float: left;
-  font-weight: lighter;
-  display: inline-block;
-  color: transparent;
-}
-
-.number-half-show:before {
-  color: black;
-}
-
-.bar-start {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  float: left;
-  width: 4px;
-
-  .bar-start-top {
-    display: inline-block;
-    height: 6px;
-    width: 8px;
-    background-color: black;
-    border-radius: 0 0 200% 0;
-
-    &:before {
-      content: '';
-      display: inline-block;
-      height: 4px;
-      width: 8px;
-      background-color: white;
-      border-radius: 0 0 200% 0;
-      float: left;
-    }
-  }
-
-  .bar-start-center {
-    flex: 1;
-    border-left: 3px solid black;
-  }
-
-  .bar-start-bottom {
-    display: inline-block;
-    height: 6px;
-    width: 8px;
-    background-color: black;
-    border-radius: 0 200% 0 0;
-
-    &:before {
-      margin-top: 2px;
-      content: '';
-      display: inline-block;
-      height: 4px;
-      width: 8px;
-      background-color: white;
-      border-radius: 0 200% 0 0;
-      float: left;
-    }
-  }
-}
 </style>

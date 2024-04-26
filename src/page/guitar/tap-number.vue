@@ -58,28 +58,6 @@ const setScore = (score) => {
   state.result = scoreName[score];
 }
 
-let delayTimeOut;
-let delayTime = 0;
-let delayTimeStamp = 0;
-const togglePause = () => {
-  if (delayTimeOut !== undefined) {
-    clearTimeout(delayTimeOut);
-  }
-  state.isPause = !state.isPause;
-  if (!state.isPause) {
-    delayTimeStamp = new Date().getTime();
-    if (props.delay > delayTime) {
-      delayTimeOut = setTimeout(() => {
-        begin();
-      }, props.delay - delayTime)
-    } else {
-      begin();
-    }
-  } else {
-    delayTime = new Date().getTime() - delayTimeStamp;
-  }
-}
-
 let setScoreTimeOut;
 let setScoreTime = 0;
 let setScoreTimeStamp = 0;
@@ -98,8 +76,50 @@ const begin = () => {
   }
 }
 
+let delayTimeOut;
+let delayTime = 0;
+let delayTimeStamp = 0;
+const run = () => {
+  if (state.isPause) {
+    state.isPause = false;
+    delayTimeStamp = new Date().getTime();
+    if (props.delay > delayTime) {
+      delayTimeOut = setTimeout(() => {
+        begin();
+      }, props.delay - delayTime)
+    } else {
+      begin();
+    }
+  }
+}
+
+const pause = () => {
+  if (!state.isPause) {
+    state.isPause = true;
+    if (delayTimeOut !== undefined) {
+      clearTimeout(delayTimeOut);
+    }
+    delayTime = new Date().getTime() - delayTimeStamp;
+  }
+}
+
+const togglePause = () => {
+  if (state.isPause) {
+    run();
+  } else {
+    pause();
+  }
+}
+
+const isRunning = ()=>{
+  return !state.isPause;
+}
+
 defineExpose({
   setScore,
+  isRunning,
+  run,
+  pause,
   togglePause
 })
 
