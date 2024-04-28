@@ -69,7 +69,7 @@ const getRandomBarArr = ({barLength, barBeat, beatNote, minBeatNote, maxFret, no
             } else {
                 barItem.noteList.push({
                     _key: key,
-                    note: note,
+                    note: note
                 });
             }
         }

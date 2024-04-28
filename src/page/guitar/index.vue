@@ -5,7 +5,7 @@
         <div class="page-title">{{ state.title }}</div>
         <div class="page-info">
           <div class="page-info-line">1 = C {{ state.barBeat }}/{{ Math.floor(1 / state.beatNote) }}</div>
-          <div class="page-info-line">♪ = {{ state.speed }}</div>
+          <div class="page-info-line" @click="changeSpeed">♪ = {{ state.speed }}</div>
           <div class="page-info-line">Capo = 1</div>
         </div>
       </div>
@@ -23,6 +23,7 @@
         </div>
       </div>
       <div class="page-foot">
+        <div class="page-number">- {{ state.barCount }} -</div>
       </div>
     </div>
   </div>
@@ -47,14 +48,16 @@ const state = reactive({
   beatNote: 1 / 4,
   //最小音符
   minBeatNote: 1 / 8,
-  //音符出现权重 全音符、2分之1音符、4分之1音符，8分之一音符
-  noteRate: [2, 2, 6, 3],
+  //音符出现权重 全音符、2分之1音符、4分之1音符，8分之1音符,16分之1音符
+  noteRate: [0, 1, 2, 4, 8],
   //最大品位
   maxFret: 3,
   //第一谱子
   barStack0: [],
   //第二谱子
-  barStack1: []
+  barStack1: [],
+  //已运行的小节数
+  barCount: 0
 });
 
 const data = {
@@ -71,7 +74,11 @@ const data = {
   //第二小节组
   barRef1: {},
   //运行中的tapNum
-  runningTapNum: {}
+  runningTapNum: {},
+  //可选的速度
+  speedArr: [60, 80, 100, 120, 180],
+  //每行的小节数
+  lineBarSize: 1
 }
 
 const setBarRef0 = (index, ref) => {
@@ -80,6 +87,22 @@ const setBarRef0 = (index, ref) => {
 
 const setBarRef1 = (index, ref) => {
   data.barRef1[index] = ref;
+}
+
+const changeSpeed = () => {
+  if (tickInfo.tickIndex > 0) return;
+  let newSpeed = 0;
+  for (let i in data.speedArr) {
+    if (state.speed === data.speedArr[data.speedArr.length - 1]) {
+      newSpeed = data.speedArr[0];
+      break;
+    } else if (state.speed < data.speedArr[i]) {
+      newSpeed = data.speedArr[i]
+      break;
+    }
+  }
+  state.speed = newSpeed;
+  tickInfo.ready = false;
 }
 
 const pushStack = () => {
@@ -217,12 +240,18 @@ const toggleInterval = () => {
     data.intervalRunTime += data.intervalTime;
   }, data.intervalTime);
 }
+const sumTickEvent = () => {
+  if (tickInfo.tickOfBar === 0) {
+    state.barCount += 1;
+  }
+}
 
 const tickEvent = () => {
   recordTickInfo();
   noteTickEvent();
   animationTickEvent();
   runningNoteTickEvent();
+  sumTickEvent();
 }
 
 onMounted(() => {
@@ -254,7 +283,7 @@ onMounted(() => {
 
 .page-head {
   background-color: white;
-  min-height: 10vh;
+  min-height: 60px;
   padding: 15px 0;
 
   .page-title {
@@ -271,7 +300,13 @@ onMounted(() => {
 
 .page-foot {
   background-color: white;
-  min-height: 5vh;
+  min-height: 30px;
+
+  .page-number {
+    text-align: right;
+    font-size: 12px;
+    line-height: 30px;
+  }
 }
 
 </style>
