@@ -13,7 +13,7 @@
         <span class="score-name">{{ state.result }}</span>
       </div>
     </div>
-    <span style="display:block;width: 100%;" :class="state.result!==undefined?`number-${state.result}`:''">{{
+    <span :class="state.result!==undefined?`number-${state.result}`:''">{{
         value
       }}</span>
   </div>
@@ -21,6 +21,11 @@
 <script setup>
 import {defineProps, onMounted, reactive} from "vue";
 
+/**
+ * good : 节奏 +-0.5
+ * great : 节奏 +-0.5 准音调
+ * perfect : 节奏 +-0.1 准音调
+ */
 const scoreName = ['miss', 'good', 'great', 'perfect']
 const beginTime = new Date().getTime();
 
@@ -28,8 +33,8 @@ const state = reactive({
   result: undefined,
   continueTime: 0,
   scoreBoxSize: 0,
-  start: false,
-  isPause: true
+  isPause: true,
+  start: false
 });
 
 let endMethod = () => {
@@ -44,11 +49,6 @@ const props = defineProps({
     required: true,
     type: Number
   },
-  delay: {
-    required: false,
-    default: 0,
-    type: Number
-  },
   itemKey: {
     required: true,
     type: String
@@ -56,7 +56,7 @@ const props = defineProps({
 })
 
 const setScore = (score) => {
-  if (state.isPause || !state.start || state.result !== undefined) return;
+  if (state.isPause || state.result !== undefined) return;
   state.continueTime = new Date().getTime() - beginTime;
   const rate = state.continueTime / props.duration;
   const left = rate >= 1 ? 0 : 1 - rate;
@@ -69,45 +69,25 @@ const setScore = (score) => {
 let setScoreTimeOut;
 let setScoreTime = 0;
 let setScoreTimeStamp = 0;
-const begin = () => {
+const run = () => {
   state.start = true;
-  if (setScoreTimeOut !== undefined) {
-    clearTimeout(setScoreTimeOut);
-  }
-  if (!state.isPause) {
+  if (state.isPause) {
+    state.isPause = false;
+    //开始
     setScoreTimeStamp = new Date().getTime();
     setScoreTimeOut = setTimeout(() => {
       setScore(0);
-    }, props.duration - setScoreTime)
-  } else {
-    setScoreTime = new Date().getTime() - setScoreTimeStamp;
-  }
-}
-
-let delayTimeOut;
-let delayTime = 0;
-let delayTimeStamp = 0;
-const run = () => {
-  if (state.isPause) {
-    state.isPause = false;
-    delayTimeStamp = new Date().getTime();
-    if (props.delay > delayTime) {
-      delayTimeOut = setTimeout(() => {
-        begin();
-      }, props.delay - delayTime)
-    } else {
-      begin();
-    }
+    }, props.duration - setScoreTime);
   }
 }
 
 const pause = () => {
   if (!state.isPause) {
     state.isPause = true;
-    if (delayTimeOut !== undefined) {
-      clearTimeout(delayTimeOut);
+    if (setScoreTimeOut !== undefined) {
+      clearTimeout(setScoreTimeOut);
     }
-    delayTime = new Date().getTime() - delayTimeStamp;
+    setScoreTime = new Date().getTime() - setScoreTimeStamp;
   }
 }
 
@@ -177,7 +157,6 @@ defineExpose({
 }
 
 .item {
-  width: 20px;
   height: 2px;
   margin: 10px 0;
   text-align: center;

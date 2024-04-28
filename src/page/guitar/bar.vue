@@ -30,16 +30,16 @@
             </div>
           </div>
           <template v-for="(noteItem,noteIndex) in props.item.noteList" :key="noteItem._key">
-            <div class="note-item" :id="noteItem._key" >
-              <div v-if="noteIndex===props.item.noteList.length-1" class="note-tab note-tab-end">
-              </div>
-              <div class="note-string" v-for="i in 6">
-                <TapNumber v-if="noteItem.string === i"
-                           :duration="60000/props.speed"
-                           :value="noteItem.fret"
-                           :itemKey="noteItem._key"
-                           :ref="el => setTapNumber(noteIndex,el)"
-                ></TapNumber>
+            <div class="note-item" :id="noteItem._key">
+              <div :class="noteIndex===props.item.noteList.length-1 ? 'note-tab-end':''">
+                <div class="note-string" v-for="i in 6">
+                  <TapNumber v-if="noteItem.string === i"
+                             :duration="60000/props.speed"
+                             :value="noteItem.fret"
+                             :itemKey="noteItem._key"
+                             :ref="el => setTapNumber(noteIndex,el)"
+                  ></TapNumber>
+                </div>
               </div>
             </div>
           </template>
@@ -77,12 +77,12 @@ const props = defineProps({
 })
 
 const tapNumberArr = {};
-const setTapNumber = (noteIndex,ref)=>{
+const setTapNumber = (noteIndex, ref) => {
   tapNumberArr[noteIndex] = ref;
 }
 
 
-const getTapNumber = (noteIndex)=>{
+const getTapNumber = (noteIndex) => {
   return tapNumberArr[noteIndex];
 }
 
@@ -97,7 +97,6 @@ defineExpose({
 }
 
 .bar-line {
-  width: 100%;
   display: flex;
   padding-top: 10px;
   padding-bottom: 20px;
@@ -109,12 +108,10 @@ defineExpose({
 }
 
 .string-line {
-  width: 100%;
   display: flex;
 }
 
 .number-line {
-  width: 100%;
   display: flex;
   border-left: 2px solid black;
   padding-top: 20px;
@@ -122,12 +119,11 @@ defineExpose({
 }
 
 .note-item {
-  width: 40px;
+  width: 35px;
   text-align: center;
 
   .note-string {
     display: block;
-    width: 100%;
     margin-top: 10px;
     height: 2px;
     background-color: black;
@@ -184,9 +180,7 @@ defineExpose({
 }
 
 .note-tab-end {
-  border-left: none;
   border-right: 2px solid black;
-  float: right;
 }
 
 .note-tab-text {
@@ -248,7 +242,7 @@ defineExpose({
     border-radius: 0 200% 0 0;
 
     &:before {
-      margin-top: 3px;
+      margin-top: 2px;
       content: '';
       display: inline-block;
       height: 5px;
