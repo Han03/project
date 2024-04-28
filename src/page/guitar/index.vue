@@ -7,8 +7,7 @@
         </div>
       </div>
       <div class="note-page">
-        <div class="note-table" ref="noteTable" @click="toggleInterval"
-             :class="state.orderRevert?'bar-order-revert':''">
+        <div class="note-table" ref="noteTable" @click="toggleInterval">
           <div class="bar-group">
             <Bar v-for="(barItem,barIndex) in state.barStack0" :item="barItem" :speed="state.speed"
                  :ref="el=>setBarRef0(barIndex,el)"></Bar>
@@ -38,7 +37,7 @@ const noteTable = ref();
 const state = reactive({
   ready: false,
   //速度
-  speed: 60,
+  speed: 120,
   //每小节4拍
   barBeat: 4,
   //4分之1音符为1拍
@@ -52,9 +51,7 @@ const state = reactive({
   //第一谱子
   barStack0: [],
   //第二谱子
-  barStack1: [],
-  //排序是否反置
-  orderRevert: false
+  barStack1: []
 });
 
 const data = {
@@ -65,11 +62,13 @@ const data = {
   //stack的长度
   barLength: 2,
   //每帧时间
-  intervalTime: 10,
+  intervalTime: 5,
   //第一小节组
   barRef0: {},
   //第二小节组
-  barRef1: {}
+  barRef1: {},
+  //运行中的tapNum
+  runningTapNum:{}
 }
 
 const setBarRef0 = (index, ref) => {
@@ -230,17 +229,19 @@ const animationTickEvent = () => {
   const animationIndex = tickInfo.tickOfStack >= tickInfo.barTickSize
       ? tickInfo.tickOfStack - tickInfo.barTickSize : (data.barLength - 1) * tickInfo.barTickSize + tickInfo.tickOfStack;
   const animationTotalSize = tickInfo.stackTickSize;
+
   const orderRevert = tickInfo.stackIndex === 0 && tickInfo.barOfStack === 0
       || tickInfo.stackIndex === 1 && tickInfo.barOfStack > 0;
-  if (state.orderRevert !== orderRevert) state.orderRevert = orderRevert;
 
   if (!orderRevert) {
     let marginSize = -fistBarGroup.clientHeight * animationIndex / animationTotalSize;
     fistBarGroup.style = `margin-top:${marginSize}px`;
+    noteTable.value.style = 'flex-direction: column;';
   } else {
     let beginSize = fistBarGroup.clientHeight + secondBarGroup.clientHeight - noteTable.value.clientHeight;
     let marginSize = secondBarGroup.clientHeight * animationIndex / animationTotalSize - beginSize;
     fistBarGroup.style = `margin-bottom:${marginSize}px`;
+    noteTable.value.style = 'flex-direction: column-reverse;';
   }
 }
 
@@ -249,7 +250,14 @@ const runningNoteTickEvent = () => {
     const noteRef = tickInfo.stackIndex === 0
         ? data.barRef0[tickInfo.barOfStack]?.getTapNumber(tickInfo.minNoteOfBar)
         : data.barRef1[tickInfo.barOfStack]?.getTapNumber(tickInfo.minNoteOfBar);
-    if (noteRef && !noteRef.isRunning()) noteRef.run();
+    if (noteRef && !noteRef.isRunning()) {
+      noteRef.run();
+      const itemKey = noteRef.getItemKey();
+      data.runningTapNum[itemKey] = noteRef;
+      noteRef.setEndMethod(()=>{
+        delete data.runningTapNum[itemKey];
+      })
+    }
   }
 }
 
@@ -309,13 +317,21 @@ const toggleInterval = () => {
   if (data.interval !== undefined) {
     clearInterval(data.interval);
     data.interval = undefined;
+    //暂停
+    Object.keys(data.runningTapNum).forEach((itemKey)=>{
+      data.runningTapNum[itemKey].pause();
+    });
     return;
   }
 
+  //恢复
+  Object.keys(data.runningTapNum).forEach((itemKey)=>{
+    data.runningTapNum[itemKey].run();
+  });
   data.interval = setInterval(() => {
     tickEvent();
     data.intervalRunTime += data.intervalTime;
-  }, data.intervalTime)
+  }, data.intervalTime);
 }
 
 const tickEvent = () => {
@@ -348,10 +364,6 @@ onMounted(() => {
   width: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.bar-order-revert {
-  flex-direction: column-reverse;
 }
 
 .bar-group {

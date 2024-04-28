@@ -29,14 +29,15 @@
               <div class="note-string" v-for="i in 6"></div>
             </div>
           </div>
-          <template v-for="(noteItem,noteIndex) in props.item.noteList">
-            <div class="note-item">
+          <template v-for="(noteItem,noteIndex) in props.item.noteList" :key="noteItem._key">
+            <div class="note-item" :id="noteItem._key" >
               <div v-if="noteIndex===props.item.noteList.length-1" class="note-tab note-tab-end">
               </div>
               <div class="note-string" v-for="i in 6">
                 <TapNumber v-if="noteItem.string === i"
                            :duration="60000/props.speed"
                            :value="noteItem.fret"
+                           :itemKey="noteItem._key"
                            :ref="el => setTapNumber(noteIndex,el)"
                 ></TapNumber>
               </div>

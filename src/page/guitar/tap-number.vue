@@ -32,6 +32,9 @@ const state = reactive({
   isPause: true
 });
 
+let endMethod = () => {
+}
+
 const props = defineProps({
   value: {
     required: true,
@@ -45,6 +48,10 @@ const props = defineProps({
     required: false,
     default: 0,
     type: Number
+  },
+  itemKey: {
+    required: true,
+    type: String
   }
 })
 
@@ -56,6 +63,7 @@ const setScore = (score) => {
   const boxSize = 20 + Math.floor(20 * left);
   state.scoreBoxSize = boxSize + boxSize % 2;
   state.result = scoreName[score];
+  endMethod();
 }
 
 let setScoreTimeOut;
@@ -111,8 +119,16 @@ const togglePause = () => {
   }
 }
 
-const isRunning = ()=>{
+const isRunning = () => {
   return !state.isPause;
+}
+
+const setEndMethod = (m) => {
+  endMethod = m;
+}
+
+const getItemKey = () => {
+  return props.itemKey;
 }
 
 defineExpose({
@@ -120,7 +136,9 @@ defineExpose({
   isRunning,
   run,
   pause,
-  togglePause
+  togglePause,
+  setEndMethod,
+  getItemKey
 })
 
 </script>
